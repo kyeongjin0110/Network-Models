@@ -1,3 +1,5 @@
+# Network-Models
+
 In this homework, you are asked to generate networks based on different models. By default, set the
 number of nodes as n=1000. But if that is too much on your machine, you can change it to a smaller
 (but still sufficiently large) value.
