@@ -1,6 +1,8 @@
 # Network-Models
 #### Generate Erdos-Renyi, Barabasi-Albert, Watts-Strogatz networks and observe any discrepancy between the theoretical and obtained values
 
+## Main description
+
 In this homework, you are asked to generate networks based on different models. By default, set the
 number of nodes as n=1000. But if that is too much on your machine, you can change it to a smaller
 (but still sufficiently large) value.
@@ -32,7 +34,7 @@ number of nodes as n=1000. But if that is too much on your machine, you can chan
 
 - Ubuntu 16.04
 - Python 3.6
-- Network 2.3.0
+- network 2.3.0
 
 ## Testing
 
