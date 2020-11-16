@@ -1,3 +1,5 @@
+# Watts-Strogatz
+
 import os
 import re
 import numpy as np
@@ -45,37 +47,44 @@ class InitModel():
         return self.edges
 
     def showGraph(self):
-        nx.draw_networkx(self.graph, pos=nx.circular_layout(sorted(self.graph.nodes(), reverse=True)), node_size = self.n, with_labels=True)
+        nx.draw_networkx(self.graph, pos=nx.circular_layout(sorted(self.graph.nodes(), reverse=True)), node_size = 20, with_labels=True)
         plt.show()
-      # plt.savefig("BarabasiAlbertGraph.png", format="PNG")
+      # plt.savefig("WattsStrogatzGraph.png", format="PNG")
 
     def showGraph2(self):
         draw_network(self.smallWorldGraph, self.k_over_2, focal_node=0)
         plt.show()
 
-class BarabasiAlbertModel():
+class WattsStrogatzModel():
 
-    def __init__(self, n, m, init_edges):
+    """
+    :param nodes: the number of nodes
+    :param k: the number of nearest neighbours, to which each node is connected
+    :param p: probability of rewiring each edge
+    :return: 2 vectors: normalized clustering coefficient values and average shortest path values
+    """
+
+    def __init__(self, n, k, p, init_edges):
         self.n = n
-        self.m = m
-
-        newGraph = nx.barabasi_albert_graph(self.n, self.m) 
-        barabasei_edges = []
+        self.k = k
+        self.p = p
+        self.init_edges = init_edges
+        newGraph = nx.connected_watts_strogatz_graph(self.n, self.k, self.p, tries=100, seed=None) 
+        watts_edges = []
         for line in nx.generate_edgelist(newGraph, data=False):
             line = line.split()
             edge = (int(line[0]), int(line[1]))
-            barabasei_edges.append(edge)
-
-        self.total_barabasei_edges = init_edges + barabasei_edges
-        # print(self.total_barabasei_edges)
+            watts_edges.append(edge)
+        self.total_watts_edges = self.init_edges + watts_edges
+        # print(self.total_watts_edges)
         self.graph = nx.Graph()
-        self.graph.add_edges_from(self.total_barabasei_edges)
+        self.graph.add_edges_from(self.total_watts_edges)
 
     def getGraph(self):
         return self.graph
 
     def getEdges(self):
-        return self.total_barabasei_edges
+        return self.total_watts_edges
 
     def getDegreeDistribution(self):
         degree_sequence = sorted([d for n, d in self.graph.degree()], reverse=True)  # degree sequence
@@ -113,12 +122,15 @@ class BarabasiAlbertModel():
     def showGraph(self):
         nx.draw_networkx(self.graph, pos=nx.circular_layout(sorted(self.graph.nodes(), reverse=True)), node_size = self.n, with_labels=True)
         plt.show()
-      # plt.savefig("BarabasiAlbertGraph.png", format="PNG")
+      # plt.savefig("WattsStrogatzGraph.png", format="PNG")
     
     def showPowerLawDistribution(self):
+        
+        fig, ax = plt.subplots()
+
         k = dict(nx.degree(self.graph))
 
-        fig, ax = plt.subplots()
+        # print(k)
 
         # generate histogram data
         y, x = np.histogram(list(k.values()), bins=max(k.values()) - min(k.values()))
@@ -133,6 +145,59 @@ class BarabasiAlbertModel():
         plt.xlabel('k')
         plt.ylabel('P(k)')
         
+        plt.show()
+
+    def showPowerLawDistribution2(self):
+
+        fig, ax = plt.subplots()
+
+        p = self.p
+        
+        avg_shortest_path = []
+        cluster_coefficient = []
+        probability = []
+
+        while p <= 1:
+
+            temp_graph = nx.connected_watts_strogatz_graph(self.n, self.k, p, tries=100, seed=None)
+
+            watts_edges = []
+            for line in nx.generate_edgelist(temp_graph, data=False):
+                line = line.split()
+                edge = (int(line[0]), int(line[1]))
+                watts_edges.append(edge)
+
+            total_watts_edges = self.init_edges + watts_edges
+            # print(self.total_watts_edges)
+            graph_by_p = nx.Graph()
+            graph_by_p.add_edges_from(total_watts_edges)
+
+            avg_sht = nx.average_shortest_path_length(graph_by_p, weight=None)
+            clust = nx.average_clustering(graph_by_p)
+            avg_shortest_path.append(avg_sht)
+            cluster_coefficient.append(clust)
+            probability.append(p)
+            p += 0.01
+
+        new_avg = np.array(avg_shortest_path)
+        avg_min = new_avg.min()
+        avg_max = new_avg.max()
+        avg = (new_avg - avg_min) / (avg_max - avg_min)
+
+        new_cluster = np.array(cluster_coefficient)
+        cluster_min = new_cluster.min()
+        cluster_max = new_cluster.max()
+        normalized_cluster_coefficient = (new_cluster - cluster_min) / (cluster_max - cluster_min)
+        # nx.draw(graph_by_p)
+
+        # plt.plot(probability, avg, label='Average shortest path')
+        # plt.plot(probability, normalized_cluster_coefficient, label='Average clustering coeff')
+        # plt.xscale('log')
+        plt.plot(avg, probability, label='Average shortest path')
+        plt.plot(normalized_cluster_coefficient, probability, label='Average clustering coeff')
+        plt.yscale('log')
+        ax.set_xlabel('average shortest path/clustering coeff')
+        ax.set_ylabel('probability')
         plt.show()
 
 
@@ -317,7 +382,8 @@ if __name__ == '__main__':
     beta = 0
     focal_node = 0
 
-    m = 2 # Number of edges to attach from a new node to existing nodes
+    k = 4 # the number of nearest neighbours, to which each node is connected
+    p = 0.01 # probability of rewiring each edge
 
     # Declare InitModel Class
     initGraph = InitModel(n, k_over_2, beta, focal_node)
@@ -328,33 +394,35 @@ if __name__ == '__main__':
 
     init_edges = initGraph.getEdges()
 
-    # Declare BarabasiAlbertModel Class
-    barabasi = BarabasiAlbertModel(n, m, init_edges)
+    # Declare WattsStrogatzModel Class
+    watts = WattsStrogatzModel(n, k, p, init_edges)
 
-    # i) Get degree distribution
-    barabasi.getDegreeDistribution()
-    meanDegreeDistribution = barabasi.getMeanDegreeDistribution()
+    # # i) Get degree distribution
+    watts.getDegreeDistribution()
+    meanDegreeDistribution = watts.getMeanDegreeDistribution()
     print("\nmeanDegreeDistribution ..")
     print(meanDegreeDistribution)
 
     # ii) Get clustering coefficient
-    clusteringCoefficient = barabasi.getClusteringCoefficient()
+    clusteringCoefficient = watts.getClusteringCoefficient()
     print("\nclusteringCoefficient ..")
     print(clusteringCoefficient)
-    meanClusteringCoefficient = barabasi.getMeanClusteringCoefficient()
+    meanClusteringCoefficient = watts.getMeanClusteringCoefficient()
     print("\nmeanClusteringCoefficient ..")
     print(meanClusteringCoefficient)
 
     # iii) Get diameter
-    diameter = barabasi.getDiameter()
+    diameter = watts.getDiameter()
     print("\ndiameter ..")
     print(diameter)
 
     # iv) Visualization graph
-    # barabasi.showGraph()
+    # watts.showGraph()
 
     # v) Visualization power law distribution
-    barabasi.showPowerLawDistribution()
+    watts.showPowerLawDistribution()
+
+    # watts.showPowerLawDistribution2()
 
     ############################################################################################################################
 
